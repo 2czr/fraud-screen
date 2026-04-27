@@ -2,21 +2,20 @@
 <script>
 window.PROXY_URL = '/api/proxy?url=';
 function hookAxios() {
-  if (window.axios && !window.axios._hooked) {
-    window.axios._hooked = true;
+  if (window.axios && !window._axiosHooked) {
+    window._axiosHooked = true;
     var originalGet = window.axios.get;
     window.axios.get = function(url) {
-      if (url && url.includes('geo.datav.aliyun.com')) {
+      if (url && typeof url === 'string' && url.indexOf('geo.datav.aliyun.com') > -1) {
         url = window.PROXY_URL + encodeURIComponent(url);
       }
       return originalGet.apply(this, arguments);
     };
   }
 }
-if (window.axios) {
+var tid = setInterval(function() {
   hookAxios();
-} else {
-  window.addEventListener('load', hookAxios);
-}
+  if (window._axiosHooked) clearInterval(tid);
+}, 100);
 </script>
 <script defer="defer" src="./static/js/main.e35548cf.js"></script><link href="./static/css/main.50b47b99.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
