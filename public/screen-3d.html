@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>信用卡诈骗大数据可视化大屏 - 3D地图</title>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0e27; color: #fff; font-family: "Microsoft Yahei", sans-serif; overflow: hidden; }
+    .header { height: 60px; background: linear-gradient(90deg, #032d7a, #0b52b6, #032d7a); display: flex; align-items: center; justify-content: center; font-size: 22px; letter-spacing: 2px; border-bottom: 2px solid #00aaff; }
+    .main { display: grid; grid-template-columns: 1fr 1.2fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px; padding: 12px; height: calc(100vh - 60px); }
+    .box { background: rgba(3, 28, 77, 0.8); border: 1px solid #00aaff; border-radius: 4px; padding: 8px; position: relative; }
+    .chart3d { width: 100%; height: 100%; }
+    .btn-group { position: fixed; top: 15px; left: 20px; z-index: 99; display: flex; gap: 10px; }
+    .func-btn { padding: 8px 16px; background: linear-gradient(90deg, #00aaff, #032d7a); border: 1px solid #00d8ff; border-radius: 4px; color: #fff; font-size: 14px; cursor: pointer; transition: all 0.3s; }
+    .func-btn:hover { background: linear-gradient(90deg, #032d7a, #00aaff); box-shadow: 0 0 8px #00d8ff; }
+    .source-btn { position: fixed; top: 15px; right: 20px; z-index: 99; padding: 8px 16px; background: linear-gradient(90deg, #00aaff, #032d7a); border: 1px solid #00d8ff; border-radius: 4px; color: #fff; font-size: 14px; cursor: pointer; }
+    .source-mask { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 999; display: none; align-items: center; justify-content: center; }
+    .source-content { width: 600px; background: #032d7a; border: 2px solid #00aaff; border-radius: 8px; padding: 30px; max-height: 80vh; overflow-y: auto; }
+    .source-content h3 { text-align: center; color: #00d8ff; font-size: 20px; margin-bottom: 20px; }
+    .source-content p { color: #fff; font-size: 15px; line-height: 2; margin: 8px 0; }
+    .source-content .label { color: #ffa940; font-weight: bold; }
+    .tooltip { position: absolute; background: rgba(3, 45, 122, 0.9); border: 1px solid #00d8ff; padding: 8px 12px; border-radius: 4px; pointer-events: none; display: none; z-index: 100; }
+  </style>
+</head>
+<body>
+  <div class="btn-group">
+    <button class="func-btn" onclick="openPage('risk-predict.html')">风险预测</button>
+    <button class="func-btn" onclick="openPage('ai-analysis.html')">AI分析</button>
+  </div>
+  <button class="source-btn" onclick="toggleSource()">数据来源</button>
+  
+  <div class="source-mask" id="sourceMask">
+    <div class="source-content">
+      <h3>数据来源</h3>
+      <p><span class="label">核心数据：</span>中国人民银行《支付体系运行总体情况》</p>
+      <p><span class="label">地域数据：</span>国家反诈中心《全国电信网络诈骗犯罪案件统计》</p>
+    </div>
+  </div>
+  
+  <div class="header">信用卡诈骗大数据可视化平台</div>
+  <div class="main">
+    <div class="box"><div id="chart1" class="chart3d"></div></div>
+    <div class="box" style="grid-row: span 2"><div id="mapContainer" class="chart3d"></div></div>
+    <div class="box"><div id="chart3" class="chart3d"></div></div>
+    <div class="box"><div id="chart4" class="chart3d"></div></div>
+    <div class="box"><div id="chart5" class="chart3d"></div></div>
+  </div>
+  
+  <div class="tooltip" id="tooltip"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <script>
+    function toggleSource() {
+      var mask = document.getElementById('sourceMask');
+      mask.style.display = mask.style.display === 'flex' ? 'none' : 'flex';
+    }
+    document.getElementById('sourceMask').onclick = function(e) {
+      if(e.target === this) this.style.display = 'none';
+    };
+    function openPage(url) { window.open(url, '_blank'); }
+
+    // ====== Three.js 3D地图 ======
+    var scene, camera, renderer, controls, raycaster, mouse;
+    var mapGroup, labelGroup;
+    var hoveredProvince = null;
+    var provinceData = {
+      "北京": { value: 8200, adcode: 110000 },
+      "天津": { value: 9600, adcode: 120000 },
+      "上海": { value: 11000, adcode: 310000 },
+      "广东": { value: 58000, adcode: 440000 },
+      "浙江": { value: 21000, adcode: 330000 },
+      "江苏": { value: 19000, adcode: 320000 },
+      "山东": { value: 15000, adcode: 370000 },
+      "四川": { value: 9000, adcode: 510000 },
+      "河南": { value: 12800, adcode: 410000 },
+      "福建": { value: 13000, adcode: 350000 },
+      "重庆": { value: 36200, adcode: 500000 },
+      "湖南": { value: 12900, adcode: 430000 },
+      "湖北": { value: 10500, adcode: 420000 },
+      "河北": { value: 9800, adcode: 130000 },
+      "陕西": { value: 8700, adcode: 610000 },
+      "安徽": { value: 7200, adcode: 340000 },
+      "辽宁": { value: 6500, adcode: 210000 },
+      "江西": { value: 5800, adcode: 360000 },
+      "广西": { value: 7600, adcode: 450000 },
+      "云南": { value: 11200, adcode: 530000 },
+      "黑龙江": { value: 4200, adcode: 230000 },
+      "吉林": { value: 7600, adcode: 220000 },
+      "山西": { value: 6300, adcode: 140000 },
+      "贵州": { value: 5100, adcode: 520000 },
+      "内蒙古": { value: 3800, adcode: 150000 },
+      "甘肃": { value: 4500, adcode: 620000 },
+      "新疆": { value: 6800, adcode: 650000 },
+      "海南": { value: 4200, adcode: 460000 },
+      "宁夏": { value: 3100, adcode: 640000 },
+      "青海": { value: 2600, adcode: 630000 },
+      "西藏": { value: 1800, adcode: 540000 }
+    };
+
+    // Proj4转换函数（简化版）
+    function proj4(lon, lat) {
+      var x = (lon - 105) * 100 / 12;
+      var y = (36 - lat) * 100 / 12;
+      return [x * 10, -y * 10];
+    }
+
+    // 初始化Three.js场景
+    function init3DMap() {
+      var container = document.getElementById('mapContainer');
+      
+      // 添加加载提示
+      container.innerHTML = '<div style="color:#00aaff;text-align:center;padding-top:50px;">正在加载地图...</div>';
+      
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0a0e27);
+      
+      camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera.position.set(0, -150, 200);
+      
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      if(container.childNodes[0]) container.removeChild(container.childNodes[0]);
+      container.appendChild(renderer.domElement);
+      
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.minDistance = 50;
+      controls.maxDistance = 400;
+      
+      // 光源
+      var ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+      
+      var directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(50, 50, 100);
+      scene.add(directionalLight);
+      
+      // 地图组
+      mapGroup = new THREE.Group();
+      scene.add(mapGroup);
+      
+      // 标签组
+      labelGroup = new THREE.Group();
+      scene.add(labelGroup);
+      
+      // 射线检测
+      raycaster = new THREE.Raycaster();
+      mouse = new THREE.Vector2();
+      
+      // 加载地图数据
+      loadMapData();
+      
+      // 事件监听
+      container.addEventListener('mousemove', onMouseMove, false);
+      container.addEventListener('dblclick', onDoubleClick, false);
+      window.addEventListener('resize', onWindowResize, false);
+      
+      animate();
+    }
+
+    function loadMapData() {
+      // 直接从CDN加载地图数据
+      fetch('https://geo.datav.aliyun.com/areas_v3/bound/geojson?code=100000_full')
+        .then(r => r.json())
+        .then(geoJson => createMapMesh(geoJson))
+        .catch(err => console.error('加载失败:', err));
+    }
+
+    function createMapMesh(geoJson) {
+      var features = geoJson.features;
+      var maxVal = 60000;
+      
+      features.forEach(function(feature) {
+        var name = feature.properties.name;
+        var adcode = feature.properties.adcode;
+        var value = provinceData[name] ? provinceData[name].value : Math.floor(Math.random() * 5000);
+        var coords;
+        
+        if (feature.geometry.type === 'Polygon') {
+          coords = feature.geometry.coordinates[0];
+        } else if (feature.geometry.type === 'MultiPolygon') {
+          coords = feature.geometry.coordinates[0][0];
+        }
+        
+        if (!coords || coords.length < 3) return;
+        
+        var positions = [];
+        var centerX = 0, centerY = 0;
+        coords.forEach(function(coord) {
+          var xy = proj4(coord[0], coord[1]);
+          positions.push(xy[0], xy[1], 0);
+          centerX += xy[0];
+          centerY += xy[1];
+        });
+        centerX /= coords.length;
+        centerY/= coords.length;
+        
+        var height = Math.max((value / maxVal) * 40 + 2, 2);
+        var color = getColor(value, maxVal);
+        
+        // 创建顶面
+        var shape = new THREE.Shape();
+        coords.forEach(function(coord, i) {
+          var xy = proj4(coord[0], coord[1]);
+          if(i===0) shape.moveTo(xy[0]-centerX, xy[1]-centerY);
+          else shape.lineTo(xy[0]-centerX, xy[1]-centerY);
+        });
+        shape.closePath();
+        
+        var extrudeSettings = { depth: height, bevelEnabled: false };
+        var meshGeometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        var material = new THREE.MeshPhongMaterial({
+          color: color,
+          transparent: true,
+          opacity: 0.9,
+          side: THREE.DoubleSide
+        });
+        
+        var mesh = new THREE.Mesh(meshGeometry, material);
+        mesh.position.set(centerX, centerY, -height);
+        mesh.rotation.x = Math.PI / 2;
+        mesh.userData = { name: name, adcode: adcode, value: value };
+        mapGroup.add(mesh);
+        
+        // 创建边框线
+        var linePositions = [];
+        coords.forEach(function(coord) {
+          var xy = proj4(coord[0], coord[1]);
+          linePositions.push(xy[0]-centerX, xy[1]-centerY, 0.5);
+        });
+        linePositions.push(linePositions[0], linePositions[1], 0.5);
+        
+        var lineGeometry = new THREE.BufferGeometry();
+        lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+        var lineMaterial = new THREE.LineBasicMaterial({ color: 0x00aaff });
+        var line = new THREE.Line(lineGeometry, lineMaterial);
+        line.position.set(centerX, centerY, 0);
+        mapGroup.add(line);
+        
+        // 省份标签
+        if (feature.properties.centroid) {
+          var centroid = feature.properties.centroid;
+          var xy = proj4(centroid[0], centroid[1]);
+          
+          var canvas = document.createElement('canvas');
+          canvas.width = 160;
+          canvas.height = 40;
+          var ctx = canvas.getContext('2d');
+          ctx.fillStyle = 'rgba(3, 45, 122, 0.95)';
+          ctx.fillRect(0, 0, 160, 40);
+          ctx.strokeStyle = '#00d8ff';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(1, 1, 158, 38);
+          ctx.fillStyle = '#fff';
+          ctx.font = 'bold 18px Microsoft YaHei';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          var displayName = name.length > 5 ? name.substring(0, 5) + '..' : name;
+          ctx.fillText(displayName + ': ' + value, 80, 20);
+          
+          var texture = new THREE.CanvasTexture(canvas);
+          var spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
+          var sprite = new THREE.Sprite(spriteMaterial);
+          sprite.position.set(xy[0]-centerX, xy[1]-centerY, height + 15);
+          sprite.scale.set(32, 8, 1);
+          labelGroup.add(sprite);
+        }
+      });
+      
+      // 居中
+      var box = new THREE.Box3().setFromObject(mapGroup);
+      var center = box.getCenter(new THREE.Vector3());
+      mapGroup.position.sub(center);
+      labelGroup.position.sub(center);
+    }
+
+    function getColor(value, max) {
+      var ratio = value / max;
+      if (ratio < 0.2) return '#032d7a';
+      if (ratio < 0.4) return '#0066cc';
+      if (ratio < 0.6) return '#00aaff';
+      if (ratio < 0.8) return '#ff6600';
+      return '#ff4d4f';
+    }
+
+    function onMouseMove(event) {
+      var container = document.getElementById('mapContainer');
+      var rect = container.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+      
+      raycaster.setFromCamera(mouse, camera);
+      var intersects = raycaster.intersectObjects(mapGroup.children);
+      
+      var tooltip = document.getElementById('tooltip');
+      
+      if (intersects.length > 0) {
+        var obj = intersects[0].object;
+        if (obj.userData.name) {
+          if (hoveredProvince !== obj) {
+            if (hoveredProvince) hoveredProvince.material.color.setHex(hoveredProvince.userData._color);
+            hoveredProvince = obj;
+            hoveredProvince.userData._color = hoveredProvince.material.color.getHex();
+            hoveredProvince.material.color.setHex(0xffaaff);
+          }
+          
+          tooltip.style.display = 'block';
+          tooltip.style.left = event.clientX + 10 + 'px';
+          tooltip.style.top = event.clientY + 10 + 'px';
+          tooltip.innerHTML = obj.userData.name + '<br>案件数: ' + obj.userData.value;
+        }
+      } else {
+        if (hoveredProvince) {
+          hoveredProvince.material.color.setHex(hoveredProvince.userData._color);
+          hoveredProvince = null;
+        }
+        tooltip.style.display = 'none';
+      }
+    }
+
+    function onDoubleClick(event) {
+      var tooltip = document.getElementById('tooltip');
+      if (hoveredProvince && hoveredProvince.userData.name) {
+        var name = hoveredProvince.userData.name;
+        window.open('province-detail.html?province=' + encodeURIComponent(name), '_blank');
+      }
+    }
+
+    function onWindowResize() {
+      var container = document.getElementById('mapContainer');
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', function() {
+      init3DMap();
+      
+      // 诈骗核心指标（使用ECharts）
+      initChart1();
+      // 欺诈类型
+      initChart4();
+      // 24小时分布
+      initChart5();
+    });
+
+    function initChart1() {
+      var myChart = echarts.init(document.getElementById('chart1'));
+      myChart.setOption({
+        title: { text: "诈骗核心指标", left: "center", textStyle: { color: "#fff", fontSize: 16 } },
+        series: [
+          { type: "pie", center: ["20%", "50%"], radius: ["22%", "35%"], label: { show: true, position: "center", formatter: "{c}\n笔", fontSize: 13, color: "#00d8ff" }, data: [{ value: 458500, name: "诈骗交易笔数" }, { value: 1, itemStyle: { color: "transparent" } }], itemStyle: { color: "#00d8ff" } },
+          { type: "pie", center: ["50%", "50%"], radius: ["22%", "35%"], label: { show: true, position: "center", formatter: "{c}\n亿美元", fontSize: 13, color: "#00a8ff" }, data: [{ value: 125, name: "涉案总金额" }, { value: 1, itemStyle: { color: "transparent" } }], itemStyle: { color: "#52c41a" } },
+          { type: "pie", center: ["80%", "50%"], radius: ["22%", "35%"], label: { show: true, position: "center", formatter: "{c}\n万人", fontSize: 13, color: "#667eff" }, data: [{ value: 45, name: "受害用户数" }, { value: 1, itemStyle: { color: "transparent" } }], itemStyle: { color: "#ffa940" } }
+        ]
+      });
+    }
+
+    function initChart4() {
+      var myChart = echarts.init(document.getElementById('chart4'));
+      myChart.setOption({
+        title: { text: "欺诈类型占比", left: "center", textStyle: { color: "#fff", fontSize: 16 } },
+        tooltip: { trigger: "item", formatter: "{b}: {d}%" },
+        legend: { orient: "vertical", left: "left", top: "middle", textStyle: { color: "#fff" }, data: ["盗刷", "虚假客服", "钓鱼链接", "代办信用卡"] },
+        series: [{ type: "pie", radius: ["40%", "70%"], center: ["60%", "50%"], label: { formatter: "{b}\n{d}%", color: "#fff" }, data: [{ value: 38, name: "盗刷", itemStyle: { color: "#ff4d4f" } }, { value: 29, name: "虚假客服", itemStyle: { color: "#ff7a45" } }, { value: 22, name: "钓鱼链接", itemStyle: { color: "#ffa940" } }, { value: 11, name: "代办信用卡", itemStyle: { color: "#52c41a" }] }]
+      });
+    }
+
+    function initChart5() {
+      var myChart = echarts.init(document.getElementById('chart5'));
+      myChart.setOption({
+        title: { text: "24小时诈骗交易频次", left: "center", textStyle: { color: "#fff", fontSize: 16 } },
+        tooltip: { trigger: "axis" },
+        xAxis: { type: "category", data: ["00","01","02","03","04","05","06","07","08","09","10","11","12","13","14","15","16","17","18","19","20","21","22","23"], axisLabel: { color: "#fff" }, axisLine: { lineStyle: { color: "#666" } } },
+        yAxis: { type: "value", axisLabel: { color: "#fff" }, splitLine: { lineStyle: { color: "#333" } } },
+        series: [{ type: "line", smooth: true, data: [12,15,18,32,8,5,3,2,4,6,8,7,9,10,12,15,14,16,20,25,30,45,60,40], lineStyle: { color: "#ff4d4f" }, itemStyle: { color: "#ff4d4f" }, areaStyle: { color: "rgba(255,77,79,0.2)" } }]
+      });
+    }
+  </script>
+</body>
+</html>

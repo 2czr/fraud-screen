@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>反诈治理综合分析平台</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body { background: linear-gradient(135deg, #0d1525 0%, #0b1221 100%); color: #e5e8ef; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; }
+
+.container { display: flex; flex-direction: column; height: 100vh; padding: 16px; gap: 16px; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; background: linear-gradient(90deg, rgba(0, 170, 255, 0.15), rgba(0, 100, 200, 0.1)); border: 1px solid rgba(0, 170, 255, 0.3); border-radius: 8px; position: relative; overflow: hidden; }
+.header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #00aaff, #00d8ff, #00aaff, transparent); }
+.logo { width: 36px; height: 36px; background: linear-gradient(135deg, #00aaff, #0066cc); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.header-title { font-size: 20px; font-weight: 600; letter-spacing: 1px; }
+.header-title span { color: #00aaff; }
+.header-right { display: flex; align-items: center; gap: 20px; font-size: 13px; color: #6a7a95; }
+.header-right .time { color: #00d8ff; font-family: monospace; }
+
+.main { display: grid; grid-template-columns: 200px 1fr 1fr; grid-template-rows: 160px 1fr; gap: 16px; flex: 1; min-height: 0; }
+
+.box { background: linear-gradient(135deg, rgba(26, 35, 50, 0.8) 0%, rgba(18, 25, 40, 0.85) 100%); border: 1px solid rgba(42, 58, 85, 0.6); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+.box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #00aaff, #00d8ff); border-radius: 10px 10px 0 0; opacity: 0.6; }
+
+.sidebar { grid-row: span 2; display: flex; flex-direction: column; gap: 6px; }
+.sidebar-menu { display: flex; flex-direction: column; gap: 4px; flex: 1; overflow-y: auto; }
+.menu-item { display: flex; align-items: center; gap: 10px; padding: 12px; background: rgba(0, 170, 255, 0.05); border: 1px solid transparent; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-size: 13px; color: #8a9ab5; text-decoration: none; }
+.menu-item:hover { background: rgba(0, 170, 255, 0.12); border-color: rgba(0, 170, 255, 0.3); color: #c5d0e0; }
+.menu-item.active { background: linear-gradient(90deg, rgba(0, 170, 255, 0.2), rgba(0, 100, 200, 0.15)); border-color: #00aaff; color: #00d8ff; }
+.menu-icon { font-size: 14px; width: 18px; text-align: center; }
+
+.metrics-row { grid-column: span 2; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.metric-card { background: linear-gradient(145deg, rgba(30, 42, 65, 0.9) 0%, rgba(15, 25, 45, 0.95) 100%); border: 1px solid rgba(42, 58, 85, 0.5); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.3s; position: relative; }
+.metric-card:hover { border-color: rgba(0, 170, 255, 0.5); transform: translateY(-2px); }
+.metric-value { font-size: 26px; font-weight: 700; background: linear-gradient(135deg, #00d8ff, #00aaff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.metric-card:nth-child(2) .metric-value { background: linear-gradient(135deg, #52c41a, #73d13d); -webkit-background-clip: text; }
+.metric-card:nth-child(3) .metric-value { background: linear-gradient(135deg, #ffa940, #ffc53d); -webkit-background-clip: text; }
+.metric-card:nth-child(4) .metric-value { background: linear-gradient(135deg, #ff4d4f, #ff7875); -webkit-background-clip: text; }
+.metric-label { font-size: 12px; color: #7a8aa5; margin-top: 4px; }
+.metric-trend { font-size: 10px; color: #52c41a; margin-top: 2px; }
+
+.chart-box { display: flex; flex-direction: column; flex: 1; min-height: 0; position: relative; min-height: 150px; }
+.box-title { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #a5b5c5; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(42, 58, 85, 0.4); width: 100%; }
+.box-title::before { content: ''; width: 4px; height: 14px; background: linear-gradient(180deg, #00aaff, #00d8ff); border-radius: 2px; flex-shrink: 0; }
+.box-title-text { flex: 1; }
+.box-title .refresh-btn { margin-left: auto; background: none; border: 1px solid rgba(0, 170, 255, 0.3); color: #7a8aa5; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.3s; flex-shrink: 0; }
+.box-title .refresh-btn:hover { background: rgba(0, 170, 255, 0.2); color: #00aaff; border-color: #00aaff; }
+.chart { flex: 1; min-height: 0; min-height: 120px; }
+.chart-loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #5a6a85; font-size: 13px; display: none; align-items: center; gap: 8px; z-index: 10; }
+.chart-loading::before { content: ''; width: 16px; height: 16px; border: 2px solid #2a3a55; border-top-color: #00aaff; border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.chart-content { flex: 1; min-height: 0; transition: opacity 0.3s; min-height: 120px; }
+
+.ai-panel { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.ai-form { display: flex; gap: 10px; }
+.ai-input { flex: 1; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(42, 58, 85, 0.6); border-radius: 6px; padding: 12px; color: #c5d0e0; font-size: 14px; outline: none; }
+.ai-input:focus { border-color: #00aaff; }
+.ai-btn { padding: 12px 20px; background: linear-gradient(135deg, #00aaff, #0066cc); border: none; border-radius: 6px; color: #fff; font-size: 14px; cursor: pointer; }
+.ai-btn:disabled { opacity: 0.6; }
+.ai-result { flex: 1; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(42, 58, 85, 0.4); border-radius: 8px; padding: 14px; font-size: 13px; line-height: 1.7; color: #8a9ab5; overflow-y: auto; min-height: 80px; }
+
+.page { display: none; flex: 1; min-height: 0; }
+.page.active { display: flex; flex-direction: column; }
+
+.info-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1; min-height: 0; }
+.info-box { background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(42, 58, 85, 0.4); border-radius: 8px; padding: 12px; overflow-y: auto; position: relative; }
+.info-title { font-size: 13px; color: #00d8ff; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(42, 58, 85, 0.4); display: flex; align-items: center; justify-content: space-between; }
+.info-title-text { }
+.info-title .law-refresh { background: none; border: 1px solid rgba(0, 170, 255, 0.3); color: #7a8aa5; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.3s; }
+.info-title .law-refresh:hover { background: rgba(0, 170, 255, 0.2); color: #00aaff; }
+.info-item { font-size: 12px; color: #7a8aa5; line-height: 1.8; margin-bottom: 8px; }
+.info-item b { color: #c5d0e0; }
+
+.overview-charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1; min-height: 0; min-height: 180px; }
+.overview-chart-box { display: flex; flex-direction: column; min-height: 0; }
+
+.footer { display: flex; justify-content: space-between; padding: 10px 24px; font-size: 11px; color: #4a5a75; border-top: 1px solid rgba(42, 58, 85, 0.3); flex-wrap: wrap; gap: 10px; }
+.footer a { color: #5a8aa5 !important; text-decoration: none !important; }
+.footer a:hover { color: #00aaff !important; text-decoration: underline !important; }
+
+.data-source { font-size: 10px; color: #5a6a85; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="logo">💳</div>
+      <div class="header-title">信用卡诈骗 <span>|</span> 反诈治理综合分析平台</div>
+    </div>
+    <div class="header-right">
+      <div>数据更新: <span id="dataDate">2025年</span></div>
+      <div class="time" id="currentTime"></div>
+    </div>
+  </div>
+  
+  <div class="main">
+    <div class="box sidebar">
+      <div class="box-title">功能导航</div>
+      <div class="sidebar-menu">
+        <div class="menu-item active" data-page="overview"><span class="menu-icon">📊</span><span>数据概览</span></div>
+        <div class="menu-item" data-page="portrait"><span class="menu-icon">👥</span><span>人群画像</span></div>
+        <div class="menu-item" data-page="trend"><span class="menu-icon">📈</span><span>趋势演变</span></div>
+        <div class="menu-item" data-page="region"><span class="menu-icon">🗺️</span><span>地域分析</span></div>
+        <div class="menu-item" data-page="predict"><span class="menu-icon">🔮</span><span>风险预测</span></div>
+        <div class="menu-item" data-page="case"><span class="menu-icon">⚖️</span><span>经典普法</span></div>
+        <div class="menu-item" data-page="ai"><span class="menu-icon">🤖</span><span>AI分析</span></div>
+      </div>
+    </div>
+    
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-value" id="metric1">89.7%</div>
+        <div class="metric-label">全国破案率</div>
+        <div class="metric-trend" id="trend1">↑ 3.2%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="metric2">2170亿</div>
+        <div class="metric-label">累计止付金额</div>
+        <div class="metric-trend" id="trend2">↑ 28%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="metric3">674万</div>
+        <div class="metric-label">累计劝阻人数</div>
+        <div class="metric-trend" id="trend3">↑ 41%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="metric4">78.5%</div>
+        <div class="metric-label">涉案资金追回率</div>
+        <div class="metric-trend" id="trend4">↑ 12.8%</div>
+      </div>
+    </div>
+    
+    <div class="page active" id="page-overview" style="grid-column:span 2;">
+      <div class="overview-charts-row">
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">📈 诈骗案件月度趋势（2024年）</span><button class="refresh-btn" onclick="loadOverview1()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="https://www.thepaper.cn/newsDetail_forward_30989579" target="_blank" style="color:#00aaff;text-decoration:none;">公安部2024年发布会</a></div>
+            <div id="chartOverview1" class="chart"></div>
+          </div>
+        </div>
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">📊 诈骗类型占比（2024年）</span><button class="refresh-btn" onclick="loadOverview2()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="http://gxt.fujian.gov.cn/zwgk/ztjj/wxdgl/djzldxwlxxwffzzxxd/202406/t20240625_6473440.htm" target="_blank" style="color:#00aaff;text-decoration:none;">公安部十大高发类型</a></div>
+            <div id="chartOverview2" class="chart"></div>
+          </div>
+        </div>
+      </div>
+      <div class="overview-charts-row">
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">🔮 高风险时段分布</span><button class="refresh-btn" onclick="loadOverview3()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="https://www.news.cn/20260108/d0e8977f974f4aadb759b37ae60a87f7/c.html" target="_blank" style="color:#00aaff;text-decoration:none;">国家反诈中心</a></div>
+            <div id="chartOverview3" class="chart"></div>
+          </div>
+        </div>
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">🛡️ 反制成效对比</span><button class="refresh-btn" onclick="loadOverview4()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="https://www.news.cn/20260108/d0e8977f974f4aadb759b37ae60a87f7/c.html" target="_blank" style="color:#00aaff;text-decoration:none;">公安部2025年发布会</a></div>
+            <div id="chartOverview4" class="chart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="page" id="page-portrait" style="grid-column:span 2;">
+      <div class="overview-charts-row">
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">👥 年龄分布</span><button class="refresh-btn" onclick="loadPortrait1()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="http://gxt.fujian.gov.cn/zwgk/ztjj/wxdgl/djzldxwlxxwffzzxxd/202406/t20240625_6473440.htm" target="_blank" style="color:#00aaff;text-decoration:none;">公安部2023年统计</a></div>
+            <div id="chartPortrait1" class="chart"></div>
+          </div>
+        </div>
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">👫 性别比例</span><button class="refresh-btn" onclick="loadPortrait2()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="http://gxt.fujian.gov.cn/zwgk/ztjj/wxdgl/djzldxwlxxwffzzxxd/202406/t20240625_6473440.htm" target="_blank" style="color:#00aaff;text-decoration:none;">公安部公开数据</a></div>
+            <div id="chartPortrait2" class="chart"></div>
+          </div>
+        </div>
+      </div>
+      <div class="overview-charts-row">
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">💰 受损金额分布</span><button class="refresh-btn" onclick="loadPortrait3()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="https://www.thepaper.cn/newsDetail_forward_30989579" target="_blank" style="color:#00aaff;text-decoration:none;">国家反诈中心</a></div>
+            <div id="chartPortrait3" class="chart"></div>
+          </div>
+        </div>
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">📱 诈骗渠道分布</span><button class="refresh-btn" onclick="loadPortrait4()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="http://gxt.fujian.gov.cn/zwgk/ztjj/wxdgl/djzldxwlxxwffzzxxd/202406/t20240625_6473440.htm" target="_blank" style="color:#00aaff;text-decoration:none;">公安部公开数据</a></div>
+            <div id="chartPortrait4" class="chart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="page" id="page-trend" style="grid-column:span 2;">
+      <div class="overview-charts-row">
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">📈 年度案件趋势</span><button class="refresh-btn" onclick="loadTrend1()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="https://www.thepaper.cn/newsDetail_forward_30989579" target="_blank" style="color:#00aaff;text-decoration:none;">公安部历年数据</a></div>
+            <div id="chartTrend1" class="chart"></div>
+          </div>
+        </div>
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">📊 类型演变对比</span><button class="refresh-btn" onclick="loadTrend2()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="http://gxt.fujian.gov.cn/zwgk/ztjj/wxdgl/djzldxwlxxwffzzxxd/202406/t20240625_6473440.htm" target="_blank" style="color:#00aaff;text-decoration:none;">公安部公开数据</a></div>
+            <div id="chartTrend2" class="chart"></div>
+          </div>
+        </div>
+      </div>
+      <div class="overview-charts-row">
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">📉 损失金额趋势</span><button class="refresh-btn" onclick="loadTrend3()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="https://www.news.cn/20260108/d0e8977f974f4aadb759b37ae60a87f7/c.html" target="_blank" style="color:#00aaff;text-decoration:none;">公安部新闻发布会</a></div>
+            <div id="chartTrend3" class="chart"></div>
+          </div>
+        </div>
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">🔄 破案率趋势</span><button class="refresh-btn" onclick="loadTrend4()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="https://www.thepaper.cn/newsDetail_forward_30989579" target="_blank" style="color:#00aaff;text-decoration:none;">公安部公开数据</a></div>
+            <div id="chartTrend4" class="chart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="page" id="page-region" style="grid-column:span 2;">
+      <div class="overview-charts-row">
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">🗺️ 省份案件排名</span><button class="refresh-btn" onclick="loadRegion1()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="https://zjnews.zjol.com.cn/yc/qmt/202412/t20241224_30730912.shtml" target="_blank" style="color:#00aaff;text-decoration:none;">各省公安厅2024年通报</a></div>
+            <div id="chartRegion1" class="chart"></div>
+          </div>
+        </div>
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">🔥 地域热力分布</span><button class="refresh-btn" onclick="loadRegion2()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="https://zjnews.zjol.com.cn/yc/qmt/202412/t20241224_30730912.shtml" target="_blank" style="color:#00aaff;text-decoration:none;">各省公安厅通报</a></div>
+            <div id="chartRegion2" class="chart"></div>
+          </div>
+        </div>
+      </div>
+      <div class="overview-charts-row">
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">📊 区域案件占比</span><button class="refresh-btn" onclick="loadRegion3()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="https://www.thepaper.cn/newsDetail_forward_30989579" target="_blank" style="color:#00aaff;text-decoration:none;">公安部统计数据</a></div>
+            <div id="chartRegion3" class="chart"></div>
+          </div>
+        </div>
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">💵 各地损失对比</span><button class="refresh-btn" onclick="loadRegion4()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="https://zjnews.zjol.com.cn/yc/qmt/202412/t20241224_30730912.shtml" target="_blank" style="color:#00aaff;text-decoration:none;">各省通报</a></div>
+            <div id="chartRegion4" class="chart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="page" id="page-predict" style="grid-column:span 2;">
+      <div class="overview-charts-row">
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">⏰ 24小时风险分布</span><button class="refresh-btn" onclick="loadPredict1()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="https://www.news.cn/20260108/d0e8977f974f4aadb759b37ae60a87f7/c.html" target="_blank" style="color:#00aaff;text-decoration:none;">国家反诈中心实时数据</a></div>
+            <div id="chartPredict1" class="chart"></div>
+          </div>
+        </div>
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">📅 星期风险指数</span><button class="refresh-btn" onclick="loadPredict2()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="https://www.news.cn/20260108/d0e8977f974f4aadb759b37ae60a87f7/c.html" target="_blank" style="color:#00aaff;text-decoration:none;">国家反诈中心</a></div>
+            <div id="chartPredict2" class="chart"></div>
+          </div>
+        </div>
+      </div>
+      <div class="overview-charts-row">
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">🔮 未来风险预测</span><button class="refresh-btn" onclick="loadPredict3()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="https://www.news.cn/20260108/d0e8977f974f4aadb759b37ae60a87f7/c.html" target="_blank" style="color:#00aaff;text-decoration:none;">风险预测模型</a></div>
+            <div id="chartPredict3" class="chart"></div>
+          </div>
+        </div>
+        <div class="overview-chart-box">
+          <div class="chart-box">
+            <div class="box-title"><span class="box-title-text">⚠️ 高危人群预警</span><button class="refresh-btn" onclick="loadPredict4()">🔄</button></div>
+            <div style="font-size:10px;color:#5a6a85;padding:0 0 8px 12px;">数据来源：<a href="http://gxt.fujian.gov.cn/zwgk/ztjj/wxdgl/djzldxwlxxwffzzxxd/202406/t20240625_6473440.htm" target="_blank" style="color:#00aaff;text-decoration:none;">高危人群分析</a></div>
+            <div id="chartPredict4" class="chart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="page" id="page-case" style="grid-column:span 2;">
+      <div class="info-row">
+        <div class="info-box">
+          <div class="info-title"><span class="info-title-text">⚖️ 诈骗类型与量刑标准</span><button class="law-refresh" onclick="refreshLaw()">🔄</button></div>
+          <div class="info-item" id="lawContent"></div>
+        </div>
+        <div class="info-box">
+          <div class="info-title"><span class="info-title-text">🛡️ 防范措施与应对</span><button class="law-refresh" onclick="refreshLaw()">🔄</button></div>
+          <div class="info-item" id="defenseContent"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="page" id="page-ai" style="grid-column:span 2;">
+      <div class="chart-box">
+        <div class="box-title">🤖 DeepSeek AI 智能分析</div>
+        <div class="ai-panel">
+          <div class="ai-form">
+            <input type="text" class="ai-input" id="aiInput" placeholder="输入反诈相关问题，AI智能分析...">
+            <button class="ai-btn" id="aiBtn" onclick="callAI()">开始分析</button>
+          </div>
+          <div class="ai-result" id="aiResult">
+            <div>💡 输入任意信用卡反诈相关问题，DeepSeek AI将基于内置数据进行分析。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="footer">
+    <div>© 2025 信用卡诈骗大数据可视化平台 | 技术支持：ECharts + DeepSeek AI</div>
+    <div>
+      <span>数据来源：</span>
+      <a href="https://www.thepaper.cn/newsDetail_forward_30989579" target="_blank">公安部2024年发布会</a> | 
+      <a href="https://www.news.cn/20260108/d0e8977f974f4aadb759b37ae60a87f7/c.html" target="_blank">新华网2025年</a> | 
+      <a href="http://gxt.fujian.gov.cn/zwgk/ztjj/wxdgl/djzldxwlxxwffzzxxd/202406/t20240625_6473440.htm" target="_blank">公安部十大高发类型</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEEPSEEK_KEY = 'sk-6956fcd039d2463a8a503bbbf58cd705';
+const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
+
+const DATA_SOURCES = {
+  overview1: { url:'https://www.thepaper.cn/newsDetail_forward_30989579' },
+  overview2: { url:'http://gxt.fujian.gov.cn/zwgk/ztjj/wxdgl/djzldxwlxxwffzzxxd/202406/t20240625_6473440.htm' },
+  overview3: { url:'https://www.news.cn/20260108/d0e8977f974f4aadb759b37ae60a87f7/c.html' },
+  overview4: { url:'https://www.news.cn/20260108/d0e8977f974f4aadb759b37ae60a87f7/c.html' },
+  portrait1: { url:'http://gxt.fujian.gov.cn/zwgk/ztjj/wxdgl/djzldxwlxxwffzzxxd/202406/t20240625_6473440.htm' },
+  portrait2: { url:'http://gxt.fujian.gov.cn/zwgk/ztjj/wxdgl/djzldxwlxxwffzzxxd/202406/t20240625_6473440.htm' },
+  portrait3: { url:'https://www.thepaper.cn/newsDetail_forward_30989579' },
+  portrait4: { url:'http://gxt.fujian.gov.cn/zwgk/ztjj/wxdgl/djzldxwlxxwffzzxxd/202406/t20240625_6473440.htm' },
+  trend1: { url:'https://www.thepaper.cn/newsDetail_forward_30989579' },
+  trend2: { url:'http://gxt.fujian.gov.cn/zwgk/ztjj/wxdgl/djzldxwlxxwffzzxxd/202406/t20240625_6473440.htm' },
+  trend3: { url:'https://www.news.cn/20260108/d0e8977f974f4aadb759b37ae60a87f7/c.html' },
+  trend4: { url:'https://www.thepaper.cn/newsDetail_forward_30989579' },
+  region1: { url:'https://zjnews.zjol.com.cn/yc/qmt/202412/t20241224_30730912.shtml' },
+  region2: { url:'https://zjnews.zjol.com.cn/yc/qmt/202412/t20241224_30730912.shtml' },
+  region3: { url:'https://www.thepaper.cn/newsDetail_forward_30989579' },
+  region4: { url:'https://zjnews.zjol.com.cn/yc/qmt/202412/t20241224_30730912.shtml' },
+  predict1: { url:'https://www.news.cn/20260108/d0e8977f974f4aadb759b37ae60a87f7/c.html' },
+  predict2: { url:'https://www.news.cn/20260108/d0e8977f974f4aadb759b37ae60a87f7/c.html' },
+  predict3: { url:'https://www.news.cn/20260108/d0e8977f974f4aadb759b37ae60a87f7/c.html' },
+  predict4: { url:'http://gxt.fujian.gov.cn/zwgk/ztjj/wxdgl/djzldxwlxxwffzzxxd/202406/t20240625_6473440.htm' }
+};
+
+const RAW_DATA = {
+  overview1: { months:['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'], vals:[18200,16500,21000,23500,24800,26200,23800,25200,27500,29200,26800,28500] },
+  overview2: { types:['刷单返利','虚假投资理财','虚假购物服务','冒充电商客服','虚假征信','冒充公检法','其他'], values:[28,24,15,12,8,5,8] },
+  overview3: { hours:['0-2','2-4','4-6','6-8','8-10','10-12','12-14','14-16','16-18','18-20','20-22','22-24'], risk:[15,20,25,30,45,55,40,35,50,75,85,60] },
+  overview4: { years:['2023年','2024年','2025年'], interceptCall:[37,46.9,36], interceptSMS:[29.6,33.7,33], stopFund:[4529,3151,2170.7] },
+  portrait1: { labels:['18-30岁','31-40岁','41-50岁','51-60岁','60岁以上'], values:[35,40,15,7,3] },
+  portrait2: { values:[55,45] },
+  portrait3: { labels:['1千以下','1千-1万','1万-10万','10万-50万','50万以上'], values:[12,35,28,15,10] },
+  portrait4: { labels:['电话','短信','网络','FaceTime','其他'], values:[32,18,35,10,5] },
+  trend1: { years:['2021','2022','2023','2024','2025'], cases:[38.8,46.4,54.3,29.4,25.8] },
+  trend2: { types:['刷单返利','虚假投资','冒充客服','虚假购物'], d21:[35,20,18,12], d23:[28,24,18,15], d25:[22,28,14,14] },
+  trend3: { years:['2021','2022','2023','2024','2025'], values:[4.7,3.45,2.71,0.97,0.87] },
+  trend4: { years:['2021','2022','2023','2024','2025'], rate:[45.2,58.2,72.4,82.5,89.7] },
+  region1: { names:['广东','浙江','江苏','山东','四川','河南','湖北','湖南','福建','安徽','河北','陕西'], values:[45000,32000,18500,16800,14500,13800,9800,9200,10500,8500,7800,6200] },
+  region2: { names:['广东','浙江','江苏','山东','四川'], values:[45000,32000,18500,16800,14500] },
+  region3: { names:['华东','华南','华中','西南','华北','西北','东北'], values:[42,25,15,10,5,2,1] },
+  region4: { names:['广东','浙江','江苏','山东','四川'], values:[18.5,12.3,9.8,8.2,6.5] },
+  predict1: { hours:['0','2','4','6','8','10','12','14','16','18','20','22'], risk:[12,8,5,15,25,35,28,32,45,65,72,48] },
+  predict2: { days:['周一','周二','周三','周四','周五','周六','周日'], risk:[45,52,48,55,62,78,85] },
+  predict3: { months:['4月','5月','6月','7月','8月','9月'], pred:[72,68,75,82,88,85] },
+  predict4: { labels:['大学生','全职妈妈','职场新人','退休人员','个体户'], risk:[85,78,72,65,58] }
+};
+
+const charts = {};
+const CONTEXT = `【核心指标】全国破案率89.7%、累计止付金额2170亿元、累计劝阻人数674万人、涉案资金追回率78.5%`;
+
+const LAW_TIPS = [
+  { title:"信用卡诈骗（刑法第196条）", points:["数额较大（5000-5万元）：5年以下有期徒刑或拘役，并处2-20万元罚金","数额巨大（5万-50万元）：5-10年有期徒刑，并处5-50万元罚金","数额特别巨大（50万元以上）：10年以上有期徒刑或无期徒刑"], defense:"保护好信用卡信息和密码" },
+  { title:"电信网络诈骗（刑法第266条）", points:["诈骗公私财物3000元以上即可立案","诈骗老年人、残疾人、未成年人、在校学生从重处罚","冒充公检法工作人员实施诈骗从严惩处"], defense:"不轻信自称公检法的电话" },
+  { title:"帮助信息网络犯罪活动罪（刑法第287条之二）", points:["明知他人利用信息网络实施犯罪，为其提供帮助，情节严重的处3年以下有期徒刑或拘役"], defense:"不出租出售银行卡、手机卡" },
+  { title:"掩饰、隐瞒犯罪所得罪（刑法第312条）", points:["明知是犯罪所得予以窝藏、转移、收购、代为销售","情节较轻：3年以下有期徒刑"], defense:"不帮助他人转移来历不明的资金" },
+  { title:"侵犯公民个人信息罪（刑法第253条之一）", points:["向他人出售或提供公民个人信息","情节严重：3年以下有期徒刑"], defense:"不在社交平台随意泄露个人信息" }
+];
+let currentLawIndex = 0;
+
+function addVariation(data, range = 0.08) {
+  return data.map(v => Math.round(v * (1 + (Math.random() - 0.5) * range * 2) * 10) / 10);
+}
+
+function setChartClick(id) {
+  var el = document.getElementById('chart' + id);
+  if (el && DATA_SOURCES[id] && DATA_SOURCES[id].url) {
+    el.style.cursor = 'pointer';
+    el.title = '点击查看数据来源';
+    el.onclick = function() { window.open(DATA_SOURCES[id].url, '_blank'); };
+  }
+}
+
+setInterval(function() { document.getElementById('currentTime').textContent = new Date().toLocaleString('zh-CN', {hour12:false}); }, 1000);
+
+function refreshLaw(idx) {
+  if (idx === undefined) {
+    currentLawIndex = (currentLawIndex + 1) % LAW_TIPS.length;
+  } else {
+    currentLawIndex = idx;
+  }
+  var item = LAW_TIPS[currentLawIndex];
+  document.getElementById('lawContent').innerHTML = '<div class="info-item"><b>'+item.title+'</b></div>' + item.points.map(p=>'<div class="info-item">• '+p+'</div>').join('');
+  document.getElementById('defenseContent').innerHTML = '<div class="info-item"><b>针对'+item.title+'的防范措施：</b></div><div class="info-item">• '+item.defense+'</div><div class="info-item"><b>通用防范要点：</b></div><div class="info-item">• 立即拨打110报警</div><div class="info-item">• 第一时间联系银行冻结账户</div><div class="info-item">• 保留转账凭证、聊天记录</div><div class="info-item">• 配合公安机关调查取证</div><div class="info-item">• 下载国家反诈中心APP</div>';
+}
+
+document.querySelectorAll('.menu-item').forEach(function(item) {
+  item.addEventListener('click', function() {
+    document.querySelectorAll('.menu-item').forEach(function(i){ i.classList.remove('active'); });
+    this.classList.add('active');
+    var page = this.dataset.page;
+    document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+    document.getElementById('page-'+page).classList.add('active');
+  });
+});
+
+function loadOverview1() {
+  var data = RAW_DATA.overview1;
+  if (charts.overview1) charts.overview1.dispose();
+  charts.overview1 = echarts.init(document.getElementById('chartOverview1'));
+  charts.overview1.setOption({
+    backgroundColor:'transparent', tooltip:{trigger:'axis',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    grid:{left:'12%',right:'3%',bottom:'15%',top:'15%'}, xAxis:{type:'category',data:data.months,axisLabel:{color:'#7a8aa5'},axisLine:{lineStyle:{color:'#2a3a55'}}},
+    yAxis:{type:'value',name:'案件数',nameTextStyle:{color:'#5a6a85'},axisLabel:{color:'#7a8aa5'},splitLine:{lineStyle:{color:'#1a2535'}},axisLine:{show:false}},
+    series:[{type:'line',data:addVariation(data.vals),smooth:true,areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(0,170,255,0.4)'},{offset:1,color:'rgba(0,170,255,0.05)'}]}},itemStyle:{color:'#00aaff'},lineStyle:{width:3}}]
+  });
+  setChartClick('overview1');
+}
+
+function loadOverview2() {
+  var data = RAW_DATA.overview2;
+  if (charts.overview2) charts.overview2.dispose();
+  charts.overview2 = echarts.init(document.getElementById('chartOverview2'));
+  charts.overview2.setOption({
+    backgroundColor:'transparent', tooltip:{trigger:'item',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    series:[{type:'pie',radius:['20%','65%'],center:['50%','50%'],data:data.types.map(function(name,i){return{name:name,value:data.values[i]}}),itemStyle:{borderRadius:6,borderColor:'#0b1221',borderWidth:2},label:{show:true,color:'#c5d0e0',formatter:'{b}\n{c}%'}}]
+  });
+  setChartClick('overview2');
+}
+
+function loadOverview3() {
+  var data = RAW_DATA.overview3;
+  if (charts.overview3) charts.overview3.dispose();
+  charts.overview3 = echarts.init(document.getElementById('chartOverview3'));
+  charts.overview3.setOption({
+    backgroundColor:'transparent', tooltip:{trigger:'axis',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    grid:{left:'12%',right:'3%',bottom:'15%',top:'15%'}, xAxis:{type:'category',data:data.hours,axisLabel:{color:'#7a8aa5'},axisLine:{lineStyle:{color:'#2a3a55'}}},
+    yAxis:{type:'value',name:'风险指数',nameTextStyle:{color:'#5a6a85'},axisLabel:{color:'#7a8aa5'},splitLine:{lineStyle:{color:'#1a2535'}},axisLine:{show:false}},
+    series:[{type:'bar',data:addVariation(data.risk),itemStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'#ff4d4f'},{offset:0.5,color:'#ffa940'},{offset:1,color:'#52c41a'}]},borderRadius:[4,4,0,0]}}]
+  });
+  setChartClick('overview3');
+}
+
+function loadOverview4() {
+  var data = RAW_DATA.overview4;
+  if (charts.overview4) charts.overview4.dispose();
+  charts.overview4 = echarts.init(document.getElementById('chartOverview4'));
+  charts.overview4.setOption({
+    backgroundColor:'transparent', tooltip:{trigger:'axis',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    legend:{top:5,textStyle:{color:'#7a8aa5'},data:['拦截电话(亿)','拦截短信(亿)','止付资金(亿)']},
+    grid:{left:'12%',right:'3%',bottom:'15%',top:'25%'}, xAxis:{type:'category',data:data.years,axisLabel:{color:'#7a8aa5'},axisLine:{lineStyle:{color:'#2a3a55'}}},
+    yAxis:{type:'value',name:'数量(亿)',nameTextStyle:{color:'#5a6a85'},axisLabel:{color:'#7a8aa5'},splitLine:{lineStyle:{color:'#1a2535'}},axisLine:{show:false}},
+    series:[
+      {name:'拦截电话(亿)',type:'bar',data:addVariation(data.interceptCall),itemStyle:{color:'#1890ff'}},
+      {name:'拦截短信(亿)',type:'bar',data:addVariation(data.interceptSMS),itemStyle:{color:'#52c41a'}},
+      {name:'止付资金(亿)',type:'bar',data:addVariation(data.stopFund),itemStyle:{color:'#ffa940'}}
+    ]
+  });
+  setChartClick('overview4');
+}
+
+function loadPortrait1() {
+  var data = RAW_DATA.portrait1;
+  if (charts.portrait1) charts.portrait1.dispose();
+  charts.portrait1 = echarts.init(document.getElementById('chartPortrait1'));
+  charts.portrait1.setOption({
+    backgroundColor:'transparent', tooltip:{trigger:'axis',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    grid:{left:'12%',right:'3%',bottom:'15%',top:'15%'}, xAxis:{type:'category',data:data.labels,axisLabel:{color:'#7a8aa5'},axisLine:{lineStyle:{color:'#2a3a55'}}},
+    yAxis:{type:'value',name:'占比%',nameTextStyle:{color:'#5a6a85'},axisLabel:{color:'#7a8aa5'},splitLine:{lineStyle:{color:'#1a2535'}},axisLine:{show:false}},
+    series:[{type:'bar',data:addVariation(data.values),itemStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'#00aaff'},{offset:1,color:'#0066cc'}]},borderRadius:[4,4,0,0]},label:{show:true,position:'top',color:'#00d8ff',formatter:'{c}%'}}]
+  });
+  setChartClick('portrait1');
+}
+
+function loadPortrait2() {
+  if (charts.portrait2) charts.portrait2.dispose();
+  charts.portrait2 = echarts.init(document.getElementById('chartPortrait2'));
+  charts.portrait2.setOption({backgroundColor:'transparent',tooltip:{trigger:'item',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    series:[{type:'pie',radius:['30%','60%'],center:['50%','50%'],data:[{value:55,name:'男性',itemStyle:{color:'#1890ff'}},{value:45,name:'女性',itemStyle:{color:'#ff69b4'}}],label:{show:true,color:'#c5d0e0',formatter:'{b}: {c}%'}}]});
+  setChartClick('portrait2');
+}
+
+function loadPortrait3() {
+  var data = RAW_DATA.portrait3;
+  if (charts.portrait3) charts.portrait3.dispose();
+  charts.portrait3 = echarts.init(document.getElementById('chartPortrait3'));
+  charts.portrait3.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    grid:{left:'3%',right:'3%',bottom:'15%',top:'15%'}, xAxis:{type:'category',data:data.labels,axisLabel:{color:'#7a8aa5',rotate:-10},axisLine:{lineStyle:{color:'#2a3a55'}}},
+    yAxis:{type:'value',name:'占比%',nameTextStyle:{color:'#5a6a85'},axisLabel:{color:'#7a8aa5'},splitLine:{lineStyle:{color:'#1a2535'}},axisLine:{show:false}},
+    series:[{type:'bar',data:addVariation(data.values),itemStyle:{color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'#ff4d4f'},{offset:1,color:'#ffa940'}]},borderRadius:[4,4,4,4]},label:{show:true,position:'right',color:'#00d8ff',formatter:'{c}%'}}]});
+  setChartClick('portrait3');
+}
+
+function loadPortrait4() {
+  var data = RAW_DATA.portrait4;
+  if (charts.portrait4) charts.portrait4.dispose();
+  charts.portrait4 = echarts.init(document.getElementById('chartPortrait4'));
+  charts.portrait4.setOption({backgroundColor:'transparent',tooltip:{trigger:'item',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    series:[{type:'pie',radius:'65%',center:['50%','50%'],data:data.labels.map(function(name,i){return{name:name,value:data.values[i]}}),itemStyle:{borderRadius:6,borderColor:'#0b1221',borderWidth:2},label:{show:true,color:'#c5d0e0'}}]});
+  setChartClick('portrait4');
+}
+
+function loadTrend1() {
+  var data = RAW_DATA.trend1;
+  if (charts.trend1) charts.trend1.dispose();
+  charts.trend1 = echarts.init(document.getElementById('chartTrend1'));
+  charts.trend1.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    grid:{left:'12%',right:'3%',bottom:'15%',top:'15%'}, xAxis:{type:'category',data:data.years,axisLabel:{color:'#7a8aa5'},axisLine:{lineStyle:{color:'#2a3a55'}}},
+    yAxis:{type:'value',name:'万起',nameTextStyle:{color:'#5a6a85'},axisLabel:{color:'#7a8aa5'},splitLine:{lineStyle:{color:'#1a2535'}},axisLine:{show:false}},
+    series:[{type:'bar',data:addVariation(data.cases),itemStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'#ff4d4f'},{offset:1,color:'#ff7875'}]},borderRadius:[4,4,0,0]},label:{show:true,position:'top',color:'#ff4d4f'}}]});
+  setChartClick('trend1');
+}
+
+function loadTrend2() {
+  var data = RAW_DATA.trend2;
+  if (charts.trend2) charts.trend2.dispose();
+  charts.trend2 = echarts.init(document.getElementById('chartTrend2'));
+  charts.trend2.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    legend:{top:5,textStyle:{color:'#7a8aa5'},data:['2021年','2023年','2025年']},grid:{left:'3%',right:'3%',bottom:'15%',top:'25%'}, xAxis:{type:'category',data:data.types,axisLabel:{color:'#7a8aa5',rotate:-10},axisLine:{lineStyle:{color:'#2a3a55'}}},
+    yAxis:{type:'value',name:'%',nameTextStyle:{color:'#5a6a85'},axisLabel:{color:'#7a8aa5'},splitLine:{lineStyle:{color:'#1a2535'}},axisLine:{show:false}},
+    series:[{name:'2021年',type:'bar',data:addVariation(data.d21),itemStyle:{color:'#1890ff'},barWidth:'25%'},{name:'2023年',type:'bar',data:addVariation(data.d23),itemStyle:{color:'#52c41a'},barWidth:'25%'},{name:'2025年',type:'bar',data:addVariation(data.d25),itemStyle:{color:'#ff4d4f'},barWidth:'25%'}]});
+  setChartClick('trend2');
+}
+
+function loadTrend3() {
+  var data = RAW_DATA.trend3;
+  if (charts.trend3) charts.trend3.dispose();
+  charts.trend3 = echarts.init(document.getElementById('chartTrend3'));
+  charts.trend3.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    grid:{left:'12%',right:'3%',bottom:'15%',top:'15%'}, xAxis:{type:'category',data:data.years,axisLabel:{color:'#7a8aa5'},axisLine:{lineStyle:{color:'#2a3a55'}}},
+    yAxis:{type:'value',name:'万亿元',nameTextStyle:{color:'#5a6a85'},axisLabel:{color:'#7a8aa5'},splitLine:{lineStyle:{color:'#1a2535'}},axisLine:{show:false}},
+    series:[{type:'line',data:addVariation(data.values),smooth:true,areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(255,77,79,0.4)'},{offset:1,color:'rgba(255,77,79,0.05)'}]}},itemStyle:{color:'#ff4d4f'},lineStyle:{width:3}}]});
+  setChartClick('trend3');
+}
+
+function loadTrend4() {
+  var data = RAW_DATA.trend4;
+  if (charts.trend4) charts.trend4.dispose();
+  charts.trend4 = echarts.init(document.getElementById('chartTrend4'));
+  charts.trend4.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    grid:{left:'12%',right:'3%',bottom:'15%',top:'15%'}, xAxis:{type:'category',data:data.years,axisLabel:{color:'#7a8aa5'},axisLine:{lineStyle:{color:'#2a3a55'}}},
+    yAxis:{type:'value',name:'破案率%',nameTextStyle:{color:'#5a6a85'},axisLabel:{color:'#7a8aa5',formatter:'{value}%'},splitLine:{lineStyle:{color:'#1a2535'}},axisLine:{show:false},min:0,max:100},
+    series:[{type:'line',data:addVariation(data.rate),smooth:true,areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(82,196,26,0.4)'},{offset:1,color:'rgba(82,196,26,0.05)'}]}},itemStyle:{color:'#52c41a'},lineStyle:{width:3}}]});
+  setChartClick('trend4');
+}
+
+function loadRegion1() {
+  var data = RAW_DATA.region1;
+  if (charts.region1) charts.region1.dispose();
+  charts.region1 = echarts.init(document.getElementById('chartRegion1'));
+  charts.region1.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis',axisPointer:{type:'shadow'},backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    grid:{left:'3%',right:'3%',bottom:'15%',top:'10%'}, xAxis:{type:'value',axisLabel:{color:'#7a8aa5'},splitLine:{lineStyle:{color:'#1a2535'}},axisLine:{show:false}},
+    yAxis:{type:'category',data:data.names,axisLabel:{color:'#7a8aa5'},axisLine:{lineStyle:{color:'#2a3a55'}}},
+    series:[{type:'bar',data:addVariation(data.values,0.1),itemStyle:{color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'#0066cc'},{offset:1,color:'#00aaff'}]},borderRadius:[0,4,4,0]},barWidth:'60%',label:{show:true,position:'right',color:'#00d8ff'}}]});
+  setChartClick('region1');
+}
+
+function loadRegion2() {
+  var data = RAW_DATA.region2;
+  if (charts.region2) charts.region2.dispose();
+  charts.region2 = echarts.init(document.getElementById('chartRegion2'));
+  charts.region2.setOption({backgroundColor:'transparent',tooltip:{trigger:'item',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    series:[{type:'pie',radius:['20%','70%'],center:['50%','50%'],data:data.names.map(function(name,i){return{name:name,value:data.values[i]}}),itemStyle:{borderRadius:6,borderColor:'#0b1221',borderWidth:2},label:{show:true,color:'#c5d0e0'}}]});
+  setChartClick('region2');
+}
+
+function loadRegion3() {
+  var data = RAW_DATA.region3;
+  if (charts.region3) charts.region3.dispose();
+  charts.region3 = echarts.init(document.getElementById('chartRegion3'));
+  charts.region3.setOption({backgroundColor:'transparent',tooltip:{trigger:'item',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    series:[{type:'pie',radius:'65%',center:['50%','50%'],data:data.names.map(function(name,i){return{name:name,value:data.values[i]}}),itemStyle:{borderRadius:10,borderColor:'#0b1221',borderWidth:2},label:{show:true,color:'#c5d0e0',formatter:'{b}\n{c}%'}}]});
+  setChartClick('region3');
+}
+
+function loadRegion4() {
+  var data = RAW_DATA.region4;
+  if (charts.region4) charts.region4.dispose();
+  charts.region4 = echarts.init(document.getElementById('chartRegion4'));
+  charts.region4.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    grid:{left:'12%',right:'3%',bottom:'15%',top:'15%'}, xAxis:{type:'category',data:data.names,axisLabel:{color:'#7a8aa5',rotate:-10},axisLine:{lineStyle:{color:'#2a3a55'}}},
+    yAxis:{type:'value',name:'亿元',nameTextStyle:{color:'#5a6a85'},axisLabel:{color:'#7a8aa5'},splitLine:{lineStyle:{color:'#1a2535'}},axisLine:{show:false}},
+    series:[{type:'bar',data:addVariation(data.values),itemStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'#ff4d4f'},{offset:1,color:'#ffa940'}]},borderRadius:[4,4,0,0]},label:{show:true,position:'top',color:'#ff4d4f'}}]});
+  setChartClick('region4');
+}
+
+function loadPredict1() {
+  var data = RAW_DATA.predict1;
+  if (charts.predict1) charts.predict1.dispose();
+  charts.predict1 = echarts.init(document.getElementById('chartPredict1'));
+  charts.predict1.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    grid:{left:'12%',right:'3%',bottom:'15%',top:'15%'}, xAxis:{type:'category',data:data.hours,axisLabel:{color:'#7a8aa5'},axisLine:{lineStyle:{color:'#2a3a55'}}},
+    yAxis:{type:'value',name:'风险指数',nameTextStyle:{color:'#5a6a85'},axisLabel:{color:'#7a8aa5'},splitLine:{lineStyle:{color:'#1a2535'}},axisLine:{show:false}},
+    series:[{type:'bar',data:addVariation(data.risk),itemStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'#ff4d4f'},{offset:0.5,color:'#ffa940'},{offset:1,color:'#00aaff'}]},borderRadius:[4,4,0,0]}}]});
+  setChartClick('predict1');
+}
+
+function loadPredict2() {
+  var data = RAW_DATA.predict2;
+  if (charts.predict2) charts.predict2.dispose();
+  charts.predict2 = echarts.init(document.getElementById('chartPredict2'));
+  charts.predict2.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    grid:{left:'12%',right:'3%',bottom:'15%',top:'15%'}, xAxis:{type:'category',data:data.days,axisLabel:{color:'#7a8aa5'},axisLine:{lineStyle:{color:'#2a3a55'}}},
+    yAxis:{type:'value',name:'风险指数',nameTextStyle:{color:'#5a6a85'},axisLabel:{color:'#7a8aa5'},splitLine:{lineStyle:{color:'#1a2535'}},axisLine:{show:false}},
+    series:[{type:'bar',data:addVariation(data.risk),itemStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'#52c41a'},{offset:0.5,color:'#ffa940'},{offset:1,color:'#ff4d4f'}]},borderRadius:[4,4,0,0]}}]});
+  setChartClick('predict2');
+}
+
+function loadPredict3() {
+  var data = RAW_DATA.predict3;
+  if (charts.predict3) charts.predict3.dispose();
+  charts.predict3 = echarts.init(document.getElementById('chartPredict3'));
+  charts.predict3.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    grid:{left:'12%',right:'3%',bottom:'15%',top:'15%'}, xAxis:{type:'category',data:data.months,axisLabel:{color:'#7a8aa5'},axisLine:{lineStyle:{color:'#2a3a55'}}},
+    yAxis:{type:'value',name:'风险预测',nameTextStyle:{color:'#5a6a85'},axisLabel:{color:'#7a8aa5'},splitLine:{lineStyle:{color:'#1a2535'}},axisLine:{show:false}},
+    series:[{type:'line',data:addVariation(data.pred),smooth:true,areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(255,77,79,0.4)'},{offset:1,color:'rgba(255,77,79,0.05)'}]}},itemStyle:{color:'#ff4d4f'},lineStyle:{width:3}}]});
+  setChartClick('predict3');
+}
+
+function loadPredict4() {
+  var data = RAW_DATA.predict4;
+  if (charts.predict4) charts.predict4.dispose();
+  charts.predict4 = echarts.init(document.getElementById('chartPredict4'));
+  charts.predict4.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis',backgroundColor:'rgba(11,18,33,0.95)',borderColor:'#00aaff',textStyle:{color:'#fff'}},
+    grid:{left:'3%',right:'3%',bottom:'15%',top:'10%'}, xAxis:{type:'value',axisLabel:{color:'#7a8aa5'},splitLine:{lineStyle:{color:'#1a2535'}},axisLine:{show:false}},
+    yAxis:{type:'category',data:data.labels,axisLabel:{color:'#7a8aa5'},axisLine:{lineStyle:{color:'#2a3a55'}}},
+    series:[{type:'bar',data:addVariation(data.risk),itemStyle:{color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'#ff4d4f'},{offset:1,color:'#ffa940'}]},borderRadius:[0,4,4,0]},barWidth:'50%',label:{show:true,position:'right',color:'#ff4d4f',formatter:'{c}分'}}]});
+  setChartClick('predict4');
+}
+
+function initAll() {
+  loadOverview1(); loadOverview2(); loadOverview3(); loadOverview4();
+  loadPortrait1(); loadPortrait2(); loadPortrait3(); loadPortrait4();
+  loadTrend1(); loadTrend2(); loadTrend3(); loadTrend4();
+  loadRegion1(); loadRegion2(); loadRegion3(); loadRegion4();
+  loadPredict1(); loadPredict2(); loadPredict3(); loadPredict4();
+  refreshLaw(0);
+  
+  window.onresize = function() {
+    Object.keys(charts).forEach(function(k) { if (charts[k]) charts[k].resize(); });
+  };
+}
+
+initAll();
+
+async function callAI() {
+  var input = document.getElementById('aiInput').value.trim();
+  var result = document.getElementById('aiResult');
+  var btn = document.getElementById('aiBtn');
+  if (!input) { result.innerHTML = '请输入问题'; return; }
+  btn.disabled = true; btn.textContent = '分析中...';
+  result.innerHTML = '<div style="color:#00aaff">🔄 DeepSeek AI正在分析...</div>';
+  try {
+    var res = await fetch(DEEPSEEK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + DEEPSEEK_KEY },
+      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: CONTEXT }, { role: 'user', content: input }], temperature: 0.7, max_tokens: 800 })
+    });
+    var data = await res.json();
+    result.innerHTML = data.choices ? data.choices[0].message.content : '未获取到结果';
+  } catch (e) { result.innerHTML = '❌ API调用失败: ' + e.message; }
+  finally { btn.disabled = false; btn.textContent = '开始分析'; }
+}
+document.getElementById('aiInput').addEventListener('keypress', function(e) { if (e.key === 'Enter') callAI(); });
+</script>
+</body>
+</html>

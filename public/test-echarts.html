@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Test ECharts</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+</head>
+<body>
+<h1>ECharts Test Page</h1>
+<div id="chart" style="width:600px;height:400px;background:#000;"></div>
+<script>
+document.write('<p>echarts = ' + typeof echarts + '</p>');
+if (typeof echarts !== 'undefined') {
+  var myChart = echarts.init(document.getElementById('chart'));
+  myChart.setOption({
+    title: { text: 'Test', left: 'center', textStyle: { color: '#fff' } },
+    xAxis: { type: 'category', data: ['A','B','C','D'], axisLabel: { color: '#fff' } },
+    yAxis: { type: 'value', axisLabel: { color: '#fff' } },
+    series: [{ type: 'bar', data: [12,34,56,78], itemStyle: { color: '#00aaff' } }]
+  });
+}
+</script>
+</body>
+</html>
