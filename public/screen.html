@@ -6,12 +6,12 @@
   <!-- 修复核心：正确的Content Security Policy，解决所有CSP报错 -->
   <meta http-equiv="Content-Security-Policy" 
         content="
-          default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:11434 http://127.0.0.1:11434 http://localhost:3000;
+          default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:11434 http://127.0.0.1:11434 http://localhost:3000 https://fraud-screen-production.up.railway.app;
           script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.bootcdn.net blob:;
           style-src 'self' 'unsafe-inline';
           img-src 'self' data: blob:;
           font-src 'self' data:;
-          connect-src 'self' http://localhost:11434 http://127.0.0.1:11434 http://localhost:3000 ws: wss: https://geo.datav.aliyun.com;
+          connect-src 'self' http://localhost:11434 http://127.0.0.1:11434 http://localhost:3000 ws: wss: https://geo.datav.aliyun.com https://fraud-screen-production.up.railway.app;
           frame-src 'self' 'unsafe-inline' http://localhost:3000 http://127.0.0.1:3000 blob: https://fraud-screen-production.up.railway.app;
           worker-src 'self' blob:;
           object-src 'none'
