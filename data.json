@@ -1,0 +1,56 @@
+{
+  "province_data": [
+    {"name": "北京", "value": 8200},
+    {"name": "上海", "value": 11000},
+    {"name": "广东", "value": 58000},
+    {"name": "浙江", "value": 21000},
+    {"name": "江苏", "value": 19000},
+    {"name": "山东", "value": 15000},
+    {"name": "四川", "value": 9000},
+    {"name": "河南", "value": 12800},
+    {"name": "福建", "value": 13000},
+    {"name": "重庆", "value": 36200},
+    {"name": "湖南", "value": 12900},
+    {"name": "湖北", "value": 10500},
+    {"name": "河北", "value": 9800},
+    {"name": "陕西", "value": 8700},
+    {"name": "安徽", "value": 7200},
+    {"name": "辽宁", "value": 6500},
+    {"name": "江西", "value": 5800},
+    {"name": "广西", "value": 7600},
+    {"name": "云南", "value": 11200},
+    {"name": "黑龙江", "value": 4200},
+    {"name": "吉林", "value": 7600},
+    {"name": "山西", "value": 6300},
+    {"name": "贵州", "value": 5100},
+    {"name": "内蒙古", "value": 3800},
+    {"name": "甘肃", "value": 4500},
+    {"name": "新疆", "value": 6800},
+    {"name": "海南", "value": 4200},
+    {"name": "宁夏", "value": 3100},
+    {"name": "青海", "value": 2600},
+    {"name": "西藏", "value": 1800},
+    {"name": "台湾", "value": 28600},
+    {"name": "澳门", "value": 1651},
+    {"name": "香港", "value": 43212}
+  ],
+  "core_indicators": {
+    "total_cases": 458500,
+    "fraud_transactions": 458500,
+    "total_amount": 125,
+    "victim_count": 45
+  },
+  "trend_data": {
+    "years": ["2018", "2019", "2020", "2021", "2022", "2023", "2024", "2025"],
+    "normal_transactions": [12000, 14500, 11000, 15600, 18000, 19500, 21000, 22500],
+    "fraud_transactions": [820, 1150, 1680, 2150, 1900, 2450, 2780, 3120]
+  },
+  "fraud_types": [
+    {"value": 38, "name": "盗刷"},
+    {"value": 29, "name": "虚假客服"},
+    {"value": 22, "name": "钓鱼链接"},
+    {"value": 11, "name": "代办信用卡"}
+  ],
+  "hourly_frequency": [12,15,18,32,8,5,3,2,4,6,8,7,9,10,12,15,14,16,20,25,30,45,60,40],
+  "update_time": "2026-04-07 19:40:00"
+}

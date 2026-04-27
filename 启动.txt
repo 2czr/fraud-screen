@@ -1,0 +1,15 @@
+@echo off
+chcp 65001 >nul
+echo ========================================
+echo   信用卡诈骗可视化平台 - 启动器
+echo ========================================
+echo.
+echo 请手动操作：
+echo 1. 打开文件资源管理器
+echo 2. 进入目录: E:\没用\open-code\计设\project - 副本 (2)
+echo 3. 双击 screen.html 文件
+echo.
+echo 或者直接在浏览器输入：
+echo   file:///E:\没用\open-code\计设\project - 副本 (2)\screen.html
+echo.
+pause

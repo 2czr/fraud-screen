@@ -1,0 +1,167 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>反诈治理成效分析</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body { background: #0b1221; color: #fff; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; }
+
+.container { display: flex; flex-direction: column; height: 100vh; padding: 20px; }
+
+.header { 
+  display: flex; align-items: center; justify-content: space-between; 
+  padding: 0 30px; height: 60px; 
+  background: linear-gradient(135deg, #1a2332 0%, #0d1525 100%); 
+  border-bottom: 1px solid #2a3a55; 
+  border-radius: 8px 8px 0 0;
+  position: relative;
+}
+.header::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, #00aaff, transparent); }
+.header-title { font-size: 22px; font-weight: 500; letter-spacing: 2px; }
+.header-title span { color: #00aaff; }
+.header-subtitle { font-size: 12px; color: #5a6a85; margin-top: 4px; }
+
+.main { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: auto 1fr; gap: 20px; flex: 1; padding: 20px 0; min-height: 0; }
+
+.box { 
+  background: linear-gradient(135deg, rgba(26, 35, 50, 0.9) 0%, rgba(13, 21, 37, 0.9) 100%); 
+  border: 1px solid #2a3a55; border-radius: 8px; padding: 20px; 
+  position: relative; overflow: hidden;
+  transition: all 0.3s ease;
+}
+.box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #00aaff, #00d8ff); border-radius: 8px 8px 0 0; opacity: 0; transition: opacity 0.3s; }
+.box:hover { border-color: #3a4a65; box-shadow: 0 4px 20px rgba(0, 170, 255, 0.15); }
+.box:hover::before { opacity: 1; }
+
+.box-top { grid-column: span 4; }
+.box-left { grid-column: span 2; }
+.box-right { grid-column: span 2; }
+
+.box-title { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 16px; color: #c5d0e0; }
+.box-title::before { content: ''; width: 4px; height: 18px; background: linear-gradient(180deg, #00aaff, #00d8ff); border-radius: 2px; }
+.box-title-icon { font-size: 18px; }
+
+.metric-card { 
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 20px; background: linear-gradient(135deg, rgba(0, 170, 255, 0.08) 0%, rgba(0, 100, 200, 0.04) 100%);
+  border: 1px solid rgba(0, 170, 255, 0.2); border-radius: 8px;
+  transition: all 0.3s ease; position: relative; overflow: hidden;
+}
+.metric-card::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(0, 170, 255, 0.1), transparent); transition: left 0.6s ease; }
+.metric-card:hover { border-color: rgba(0, 170, 255, 0.4); transform: translateY(-2px); }
+.metric-card:hover::before { left: 100%; }
+.metric-card:nth-child(2)::before { background: linear-gradient(90deg, transparent, rgba(82, 196, 26, 0.1), transparent); }
+.metric-card:nth-child(3)::before { background: linear-gradient(90deg, transparent, rgba(255, 169, 64, 0.1), transparent); }
+.metric-card:nth-child(4)::before { background: linear-gradient(90deg, transparent, rgba(255, 77, 79, 0.1), transparent); }
+
+.metric-value { font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #00d8ff, #00aaff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+.metric-card:nth-child(2) .metric-value { background: linear-gradient(135deg, #52c41a, #73d13d); -webkit-background-clip: text; }
+.metric-card:nth-child(3) .metric-value { background: linear-gradient(135deg, #ffa940, #ffc53d); -webkit-background-clip: text; }
+.metric-card:nth-child(4) .metric-value { background: linear-gradient(135deg, #ff4d4f, #ff7875); -webkit-background-clip: text; }
+.metric-label { font-size: 13px; color: #7a8aa5; letter-spacing: 1px; }
+
+.chart { width: 100%; height: calc(100% - 40px); min-height: 280px; }
+
+.chart-loading { 
+  display: flex; align-items: center; justify-content: center; height: 100%; 
+  color: #5a6a85; font-size: 14px;
+}
+
+.footer { display: flex; justify-content: space-between; padding: 15px 30px; font-size: 12px; color: #4a5a75; border-top: 1px solid #1a2535; }
+.footer a { color: #00aaff; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <div class="header-title">信用卡诈骗 <span>|</span> 反诈治理成效分析</div>
+      <div class="header-subtitle">数据更新至 2025年 | 来源：公安部、国家反诈中心</div>
+    </div>
+  </div>
+  
+  <div class="main">
+    <div class="box box-top">
+      <div class="box-title">
+        <span class="box-title-icon">📊</span>
+        反诈治理核心成效统计
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;">
+        <div class="metric-card">
+          <div class="metric-value">89.7%</div>
+          <div class="metric-label">全国破案率</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">2170亿</div>
+          <div class="metric-label">累计止付金额</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">674万</div>
+          <div class="metric-label">累计劝阻人数</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">78.5%</div>
+          <div class="metric-label">涉案资金追回率</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="box box-left">
+      <div class="box-title">
+        <span class="box-title-icon">🎯</span>
+        受骗人群画像分析
+      </div>
+      <div id="chart1" class="chart"></div>
+    </div>
+    
+    <div class="box box-right">
+      <div class="box-title">
+        <span class="box-title-icon">📈</span>
+        诈骗手段演变趋势
+      </div>
+      <div id="chart2" class="chart"></div>
+    </div>
+  </div>
+  
+  <div class="footer">
+    <div>© 2025 信用卡诈骗大数据可视化平台</div>
+    <div>数据来源：公安部、国家反诈中心 | 技术支持：ECharts</div>
+  </div>
+</div>
+
+<script>
+var chart1 = echarts.init(document.getElementById('chart1'));
+chart1.setOption({
+  backgroundColor: 'transparent',
+  tooltip: { trigger: 'item', backgroundColor: 'rgba(11, 18, 33, 0.95)', borderColor: '#00aaff', borderWidth: 1, textStyle: { color: '#fff' } },
+  legend: { top: 5, textStyle: { color: '#7a8aa5' }, data: ['年龄分布', '性别比例'] },
+  grid: [{ left: '3%', right: '52%', bottom: '15%', top: '20%', containLabel: true }, { left: '52%', right: '3%', bottom: '15%', top: '20%', containLabel: true }],
+  xAxis: [{ type: 'category', gridIndex: 0, data: ['18-30岁', '31-40岁', '41-50岁', '51岁+'], axisLabel: { color: '#7a8aa5' }, axisLine: { lineStyle: { color: '#2a3a55' } }, axisTick: { lineStyle: { color: '#2a3a55' } }],
+  yAxis: [{ type: 'value', gridIndex: 0, name: '占比%', nameTextStyle: { color: '#5a6a85' }, axisLabel: { color: '#7a8aa5', formatter: '{value}%' }, splitLine: { lineStyle: { color: '#1a2535' } }, axisLine: { show: false } }],
+  series: [
+    { name: '年龄分布', type: 'bar', gridIndex: 0, data: [40, 40, 15, 5], itemStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: '#00aaff' }, { offset: 1, color: '#0066cc' }] }, borderRadius: [4, 4, 0, 0] }, barWidth: '50%', label: { show: true, position: 'top', color: '#00d8ff', formatter: '{c}%' } },
+    { name: '性别比例', type: 'pie', radius: ['25%', '45%'], center: ['75%', '50%'], data: [{ value: 55, name: '男性', itemStyle: { color: '#1890ff' } }, { value: 45, name: '女性', itemStyle: { color: '#ff69b4' } }], label: { show: true, color: '#c5d0e0', formatter: '{b}: {c}%' }, labelLine: { lineStyle: { color: '#3a4a65' } } }
+  ]
+});
+
+var chart2 = echarts.init(document.getElementById('chart2'));
+chart2.setOption({
+  backgroundColor: 'transparent',
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: 'rgba(11, 18, 33, 0.95)', borderColor: '#00aaff', borderWidth: 1, textStyle: { color: '#fff' } },
+  legend: { top: 5, textStyle: { color: '#7a8aa5' }, data: ['2023年占比', '2025年占比'] },
+  grid: { left: '3%', right: '3%', bottom: '15%', top: '20%', containLabel: true },
+  xAxis: { type: 'category', data: ['刷单返利', '虚假投资', '虚假购物', '冒充客服', '钓鱼链接', 'AI诈骗'], axisLabel: { color: '#7a8aa5', rotate: -15 }, axisLine: { lineStyle: { color: '#2a3a55' } }, axisTick: { lineStyle: { color: '#2a3a55' } } },
+  yAxis: { type: 'value', name: '占比(%)', nameTextStyle: { color: '#5a6a85' }, axisLabel: { color: '#7a8aa5', formatter: '{value}%' }, splitLine: { lineStyle: { color: '#1a2535' } }, axisLine: { show: false } },
+  series: [
+    { name: '2023年占比', type: 'bar', data: [28, 24, 15, 18, 10, 5], itemStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: '#00aaff' }, { offset: 1, color: '#0066cc' }] }, borderRadius: [4, 4, 0, 0], barWidth: '35%', label: { show: true, position: 'top', color: '#00d8ff', formatter: '{c}%' } },
+    { name: '2025年占比', type: 'bar', data: [22, 28, 15, 15, 8, 12], itemStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: '#ff4d4f' }, { offset: 1, color: '#cc3333' }] }, borderRadius: [4, 4, 0, 0], barWidth: '35%', label: { show: true, position: 'top', color: '#ff4d4f', formatter: '{c}%' } }
+  ]
+});
+
+window.onresize = function() { chart1.resize(); chart2.resize(); };
+</script>
+</body>
+</html>

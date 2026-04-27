@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>信用卡诈骗3D地图</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0e27; color: #fff; font-family: Microsoft YaHei, sans-serif; overflow: hidden; }
+    .header { height: 60px; background: linear-gradient(90deg, #032d7a, #0b52b6, #032d7a); display: flex; align-items: center; justify-content: center; font-size: 22px; letter-spacing: 2px; border-bottom: 2px solid #00aaff; }
+    .main { display: grid; grid-template-columns: 1fr 1.2fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px; padding: 12px; height: calc(100vh - 60px); }
+    .box { background: rgba(3, 28, 77, 0.8); border: 1px solid #00aaff; border-radius: 4px; padding: 8px; position: relative; }
+    #mapContainer { position: relative; width: 100%; height: 100%; }
+    #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #00aaff; font-size: 18px; }
+    #error { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff4d4f; font-size: 16px; display: none; }
+  </style>
+</head>
+<body>
+  <div class="header">信用卡诈骗大数据可视化平台 - 3D地图</div>
+  <div class="main">
+    <div class="box" id="box1"></div>
+    <div class="box" style="grid-row: span 2">
+      <div id="mapContainer">
+        <div id="loading">加载中...</div>
+        <div id="error"></div>
+      </div>
+    </div>
+    <div class="box" id="box3"></div>
+    <div class="box" id="box4"></div>
+    <div class="box" id="box5"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <script>
+    var provinceData = {
+      "北京": 8200, "天津": 9600, "上海": 11000, "广东": 58000, "浙江": 21000,
+      "江苏": 19000, "山东": 15000, "四川": 9000, "河南": 12800, "福建": 13000,
+      "重庆": 36200, "湖南": 12900, "湖北": 10500, "河北": 9800, "陕西": 8700,
+      "安徽": 7200, "辽宁": 6500, "江西": 5800, "广西": 7600, "云南": 11200,
+      "黑龙江": 4200, "吉林": 7600, "山西": 6300, "贵州": 5100, "内蒙古": 3800,
+      "甘肃": 4500, "新疆": 6800, "海南": 4200, "宁夏": 3100, "青海": 2600, "西藏": 1800
+    };
+
+    function init() {
+      console.log('开始初始化3D地图...');
+      console.log('THREE:', typeof THREE);
+      
+      if (typeof THREE === 'undefined') {
+        showError('Three.js加载失败');
+        return;
+      }
+      
+      var container = document.getElementById('mapContainer');
+      if (!container) { showError('容器不存在'); return; }
+      
+      document.getElementById('loading').style.display = 'block';
+      
+      // 加载地图数据
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', 'https://geo.datav.aliyun.com/areas_v3/bound/geojson?code=100000_full', true);
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          try {
+            var geoJson = JSON.parse(xhr.responseText);
+            console.log('地图数据加载成功, features:', geoJson.features.length);
+            create3DMap(geoJson);
+          } catch(e) {
+            showError('JSON解析失败: ' + e.message);
+          }
+        } else {
+          showError('加载失败: ' + xhr.status);
+        }
+      };
+      xhr.onerror = function() { showError('网络请求失败'); };
+      xhr.send();
+    }
+
+    function showError(msg) {
+      console.error(msg);
+      document.getElementById('loading').style.display = 'none';
+      var errorEl = document.getElementById('error');
+      errorEl.style.display = 'block';
+      errorEl.innerHTML = msg + '<br><br>请在浏览器控制台查看详情<br>或使用本地服务器打开';
+    }
+
+    function create3DMap(geoJson) {
+      var container = document.getElementById('mapContainer');
+      document.getElementById('loading').style.display = 'none';
+      
+      var scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0a0e27);
+      
+      var camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera.position.set(0, -80, 120);
+      
+      var renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      container.appendChild(renderer.domElement);
+      
+      var controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      
+      // 光源
+      scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+      var dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      dirLight.position.set(50, 50, 100);
+      scene.add(dirLight);
+      
+      var mapGroup = new THREE.Group();
+      scene.add(mapGroup);
+      
+      var maxVal = 60000;
+      var features = geoJson.features;
+      
+      features.forEach(function(feat) {
+        var name = feat.properties.name;
+        var value = provinceData[name] || Math.random() * 5000;
+        var coords = feat.geometry.type === 'Polygon' ? feat.geometry.coordinates[0] : feat.geometry.coordinates[0][0];
+        if (!coords || coords.length < 3) return;
+        
+        // 投影转换
+        var positions = [];
+        var cx = 0, cy = 0;
+        coords.forEach(function(c) {
+          var xy = [(c[0] - 105) * 10, (36 - c[1]) * 10];
+          positions.push(xy[0], xy[1], 0);
+          cx += xy[0]; cy += xy[1];
+        });
+        cx /= coords.length; cy /= coords.length;
+        
+        // 高度基于数值
+        var height = (value / maxVal) * 20 + 2;
+        
+        // 创建柱状体
+        var shape = new THREE.Shape();
+        coords.forEach(function(c, i) {
+          var xy = [(c[0] - 105) * 10, (36 - c[1]) * 10];
+          if (i === 0) shape.moveTo(xy[0] - cx, xy[1] - cy);
+          else shape.lineTo(xy[0] - cx, xy[1] - cy);
+        });
+        shape.closePath();
+        
+        var geo = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
+        var color = value < 5000 ? 0x032d7a : value < 15000 ? 0x0066cc : value < 30000 ? 0x00aaff : 0xff4d4f;
+        var mesh = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({ color: color, transparent: true, opacity: 0.9 }));
+        mesh.position.set(cx, cy, -height);
+        mesh.rotation.x = Math.PI / 2;
+        mesh.userData = { name: name, value: value };
+        mapGroup.add(mesh);
+        
+        // 边框线
+        var linePos = [];
+        coords.forEach(function(c) {
+          var xy = [(c[0] - 105) * 10, (36 - c[1]) * 10];
+          linePos.push(xy[0] - cx, xy[1] - cy, 0.5);
+        });
+        linePos.push(linePos[0], linePos[1], 0.5);
+        var lineGeo = new THREE.BufferGeometry();
+        lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linePos, 3));
+        var line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0x00aaff }));
+        line.position.set(cx, cy, 0);
+        mapGroup.add(line);
+      });
+      
+      // 居中
+      var box = new THREE.Box3().setFromObject(mapGroup);
+      var center = box.getCenter(new THREE.Vector3());
+      mapGroup.position.sub(center);
+      
+      // 动画循环
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+      
+      // 窗口调整
+      window.addEventListener('resize', function() {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+      });
+      
+      // 鼠标交互
+      var raycaster = new THREE.Raycaster();
+      var mouse = new THREE.Vector2();
+      
+      container.addEventListener('mousemove', function(e) {
+        var rect = container.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        
+        raycaster.setFromCamera(mouse, camera);
+        var intersects = raycaster.intersectObjects(mapGroup.children);
+        
+        var tooltip = document.getElementById('tooltip');
+        if (!tooltip) {
+          tooltip = document.createElement('div');
+          tooltip.id = 'tooltip';
+          tooltip.style.cssText = 'position:absolute;background:rgba(3,45,122,0.95);border:1px solid #00d8ff;padding:8px 12px;border-radius:4px;pointer-events:none;z-index:100;display:none;';
+          container.appendChild(tooltip);
+        }
+        
+        if (intersects.length > 0 && intersects[0].object.userData.name) {
+          tooltip.style.display = 'block';
+          tooltip.style.left = (e.clientX - rect.left + 10) + 'px';
+          tooltip.style.top = (e.clientY - rect.top + 10) + 'px';
+          tooltip.innerHTML = intersects[0].object.userData.name + '<br>案件数: ' + Math.round(intersects[0].object.userData.value);
+        } else {
+          tooltip.style.display = 'none';
+        }
+      });
+      
+      console.log('3D地图创建完成');
+    }
+
+    // 初始化图表
+    function initCharts() {
+      var chart1 = echarts.init(document.getElementById('box1'));
+      chart1.setOption({
+        title: { text: '诈骗核心指标', left: 'center', textStyle: { color: '#fff' } },
+        series: [
+          { type: 'pie', center: ['20%', '50%'], radius: ['22%', '35%'], label: { show: true, position: 'center', formatter: '{c}\\n笔', color: '#00d8ff' }, data: [{ value: 458500 }, { value: 1, itemStyle: { color: 'transparent' } }], itemStyle: { color: '#00d8ff' } },
+          { type: 'pie', center: ['50%', '50%'], radius: ['22%', '35%'], label: { show: true, position: 'center', formatter: '{c}\\n亿美元', color: '#00a8ff' }, data: [{ value: 125 }, { value: 1, itemStyle: { color: 'transparent' } }], itemStyle: { color: '#52c41a' } },
+          { type: 'pie', center: ['80%', '50%'], radius: ['22%', '35%'], label: { show: true, position: 'center', formatter: '{c}\\n万人', color: '#667eff' }, data: [{ value: 45 }, { value: 1, itemStyle: { color: 'transparent' } }], itemStyle: { color: '#ffa940' } }
+        ]
+      });
+      
+      var chart4 = echarts.init(document.getElementById('box4'));
+      chart4.setOption({
+        title: { text: '欺诈类型占比', left: 'center', textStyle: { color: '#fff' } },
+        tooltip: { trigger: 'item' },
+        legend: { orient: 'vertical', left: 'left', textStyle: { color: '#fff' }, data: ['盗刷', '虚假客服', '钓鱼链接', '代办信用卡'] },
+        series: [{ type: 'pie', radius: ['40%', '70%'], center: ['60%', '50%'], data: [
+          { value: 38, name: '盗刷', itemStyle: { color: '#ff4d4f' } },
+          { value: 29, name: '虚假客服', itemStyle: { color: '#ff7a45' } },
+          { value: 22, name: '钓鱼链接', itemStyle: { color: '#ffa940' } },
+          { value: 11, name: '代办信用卡', itemStyle: { color: '#52c41a' } }
+        ] }]
+      });
+      
+      var chart5 = echarts.init(document.getElementById('box5'));
+      chart5.setOption({
+        title: { text: '24小时诈骗频次', left: 'center', textStyle: { color: '#fff' } },
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'category', data: ['00','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23'], axisLabel: { color: '#fff' } },
+        yAxis: { type: 'value', axisLabel: { color: '#fff' } },
+        series: [{ type: 'line', smooth: true, data: [12,15,18,32,8,5,3,2,4,6,8,7,9,10,12,15,14,16,20,25,30,45,60,40], lineStyle: { color: '#ff4d4f' }, areaStyle: { color: 'rgba(255,77,79,0.2)' } }]
+      });
+    }
+
+    // 启动
+    window.onload = function() {
+      console.log('页面加载完成');
+      init();
+      initCharts();
+    };
+  </script>
+</body>
+</html>
