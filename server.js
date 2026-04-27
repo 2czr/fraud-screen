@@ -7,6 +7,19 @@ const PORT = 3001;
 
 app.use(cors());
 app.use(express.json());
+
+app.get('/api/proxy', async (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.status(400).json({ error: 'Missing url' });
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // 真实反诈数据（基于公安部/国家反诈中心2024-2025年公开数据）

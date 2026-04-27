@@ -1,1 +1,16 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"/><link rel="icon" href="./favicon.ico"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="3D China Map"/><link rel="apple-touch-icon" href="./logo192.png"/><link rel="manifest" href="./manifest.json"/><title>3D地图</title><script defer="defer" src="./static/js/main.e35548cf.js"></script><link href="./static/css/main.50b47b99.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><link rel="icon" href="./favicon.ico"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="3D China Map"/><link rel="apple-touch-icon" href="./logo192.png"/><link rel="manifest" href="./manifest.json"/><title>3D地图</title>
+<script>
+window.PROXY_URL = '/api/proxy?url=';
+(function() {
+  var originalGet = axios?.get;
+  if (originalGet) {
+    axios.get = function(url) {
+      if (url && url.includes('geo.datav.aliyun.com')) {
+        url = window.PROXY_URL + encodeURIComponent(url);
+      }
+      return originalGet.apply(this, arguments);
+    };
+  }
+})();
+</script>
+<script defer="defer" src="./static/js/main.e35548cf.js"></script><link href="./static/css/main.50b47b99.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
